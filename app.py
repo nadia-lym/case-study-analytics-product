@@ -218,7 +218,61 @@ with tab_overview:
     st.dataframe(df_filtered.head(100))
 
 # --------------------------
-# TAB 2: Data Profiling (your original summaries)
+# TAB 2: Geospatial View
+# --------------------------
+with tab_geo:
+    st.subheader("Pickup Hotspots (Sampled Map)")
+    if {"start_location_lat", "start_location_long"}.issubset(df_filtered.columns):
+        geo = df_filtered[["start_location_lat", "start_location_long"]].dropna().rename(
+            columns={"start_location_lat": "lat", "start_location_long": "lon"}
+        )
+        # sample to keep map performant
+        st.map(geo.sample(n=min(5000, len(geo)), random_state=42))
+    else:
+        st.info("Start location coordinates not available.")
+
+    st.subheader("Average Surge by Start Zip Code")
+    if {"start_zip_code", "surge_factor"}.issubset(df_filtered.columns):
+        surge_by_zip = (
+            df_filtered.dropna(subset=["start_zip_code"])
+            .groupby("start_zip_code")["surge_factor"]
+            .mean()
+            .sort_values(ascending=False)
+            .head(20)
+        )
+        st.bar_chart(surge_by_zip)
+    else:
+        st.info("Zip code / surge data not available.")
+
+# --------------------------
+# TAB 3: Pricing & Elasticity
+# --------------------------
+with tab_pricing:
+    st.subheader("Trips by Surge Factor (Binned)")
+    if "surge_factor" in df_filtered.columns:
+        surge_series = df_filtered["surge_factor"].clip(lower=0, upper=5)
+        surge_bins = pd.cut(surge_series, bins=[0, 1, 1.25, 1.5, 2, 5], include_lowest=True)
+        trips_by_surge_bin = surge_bins.value_counts().sort_index()
+        st.bar_chart(trips_by_surge_bin)
+        st.caption("This approximates how ride volume changes across different surge levels.")
+    else:
+        st.info("Surge data not available.")
+
+    st.subheader("Average Driver Rating by Surge Bin")
+    if {"surge_factor", "driver_rating"}.issubset(df_filtered.columns):
+        surge_bins = pd.cut(
+            df_filtered["surge_factor"].clip(lower=0, upper=5),
+            bins=[0, 1, 1.25, 1.5, 2, 5],
+            include_lowest=True,
+        )
+        rating_by_surge = df_filtered.groupby(surge_bins)["driver_rating"].mean()
+        st.bar_chart(rating_by_surge)
+        st.caption("Helps explore whether higher surge correlates with worse experience.")
+    else:
+        st.info("Need both surge and rating data to show this chart.")
+
+# --------------------------
+# TAB 4: Data Profiling (your original summaries)
 # --------------------------
 with tab_profile:
     st.subheader("Missing Values by Column")
