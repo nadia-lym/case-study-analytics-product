@@ -143,9 +143,10 @@ if "requested_car_category" in df_filtered.columns and ride_category:
 st.write(f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** sampled trips.")
 
 # ==========================
-# TABS: (1) Overview, (2) Data Profiling
+# TABS
 # ==========================
-tab_overview, tab_profile = st.tabs(["📊 Marketplace Overview", "🧪 Data Profiling"])
+tab_overview, tab_geo, tab_pricing, tab_profile = st.tabs(
+    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "🧪 Data Profiling"])
 
 # --------------------------
 # TAB 1: Marketplace Overview
@@ -181,6 +182,38 @@ with tab_overview:
     else:
         st.info("Hour information is not available in the dataset.")
 
+        # Trips over Time (by date)
+    st.subheader("Trips Over Time (by Date)")
+    if "date_only" in df_filtered.columns:
+        trips_by_date = df_filtered.groupby("date_only").size()
+        st.line_chart(trips_by_date)
+    else:
+        st.info("Date information is not available.")
+
+    # Average surge over time
+    st.subheader("Average Surge Over Time")
+    if {"date_only", "surge_factor"}.issubset(df_filtered.columns):
+        surge_by_date = df_filtered.groupby("date_only")["surge_factor"].mean()
+        st.line_chart(surge_by_date)
+    else:
+        st.info("Surge information is not available.")
+
+    # Trip duration distribution
+    st.subheader("Trip Duration Distribution (minutes)")
+    if "trip_duration_min" in df_filtered.columns:
+        duration_series = df_filtered["trip_duration_min"].clip(lower=0, upper=120)  # cap at 2 hours
+        st.bar_chart(duration_series.value_counts(bins=20).sort_index())
+    else:
+        st.info("Trip duration not available.")
+
+    # Driver rating distribution
+    st.subheader("Driver Rating Distribution")
+    if "driver_rating" in df_filtered.columns:
+        st.bar_chart(df_filtered["driver_rating"].value_counts().sort_index())
+    else:
+        st.info("Driver rating not available.")
+
+    
     st.subheader("Raw Data Preview (Filtered Sample)")
     st.dataframe(df_filtered.head(100))
 
