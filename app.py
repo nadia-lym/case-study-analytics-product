@@ -365,129 +365,133 @@ with tab_pricing:
     else:
         st.info("Need both surge and rating data to show this chart.")
         
-# --------------------------
-# TAB 4: Revenue Insights
-# --------------------------
-
-with tab_revenue:
-    st.header("Revenue Insights")
-    st.write("Estimated revenue modeling based on trip distance, surge factor, and simplified fare assumptions.")
-
-       # -------------------------
-    # Revenue Model Definition
-    # -------------------------
-    st.subheader("Estimated Fare Model")
-
-    # Convert distance to miles
-    df_filtered["distance_miles"] = df_filtered["distance_travelled"] / 1609.34
-
-    BASE_FARE = 2.0
-    COST_PER_MILE = 1.5
-
-    df_filtered["estimated_fare"] = (
-        BASE_FARE + (df_filtered["distance_miles"] * COST_PER_MILE * df_filtered["surge_factor"])
-    )
-
-    st.write(
-        f"""
-        **Fare Formula Used:**  
-        Estimated Fare = ${BASE_FARE} + (Distance in miles × ${COST_PER_MILE} × Surge Factor)
-        """
-    )
-
-    # ----------------------------------------
-    # Gross Bookings vs Surge Bin
-    # ----------------------------------------
-    st.subheader("Estimated Gross Bookings vs Surge Level")
-
-    surge_bins = [0, 1, 1.25, 1.5, 2, 5]
-    surge_labels = ["0-1", "1-1.25", "1.25-1.5", "1.5-2", "2-5"]
-
-    df_filtered["surge_bin"] = pd.cut(df_filtered["surge_factor"], bins=surge_bins, labels=surge_labels)
-
-    gross_bookings_df = (
-        df_filtered.groupby("surge_bin")
-        .agg(
-            total_gross_bookings=("estimated_fare", "sum"),
-            total_trips=("estimated_fare", "count"),
-            avg_fare=("estimated_fare", "mean"),
+    # --------------------------
+    # TAB 4: Revenue Insights
+    # --------------------------
+    with tab_revenue:
+        st.header("Revenue Insights")
+        st.write(
+            "Estimated revenue modeling based on trip distance, surge factor, "
+            "and a simplified Uber-style fare formula."
         )
-        .reset_index()
-    )
-
-    st.dataframe(gross_bookings_df)
-
-    # Bar Chart: Gross Bookings vs Surge
-    import altair as alt
-
-    gb_chart = (
-        alt.Chart(gross_bookings_df)
-        .mark_bar()
-        .encode(
-            x=alt.X("surge_bin:N", title="Surge Level"),
-            y=alt.Y("total_gross_bookings:Q", title="Estimated Gross Bookings ($)"),
-            tooltip=["surge_bin", "total_gross_bookings", "total_trips", "avg_fare"],
+    
+        # -------------------------
+        # Revenue Model Definition
+        # -------------------------
+        st.subheader("Estimated Fare Model")
+    
+        # Convert distance to miles
+        df_filtered["distance_miles"] = df_filtered["distance_travelled"] / 1609.34
+    
+        BASE_FARE = 2.0
+        COST_PER_MILE = 1.5
+    
+        df_filtered["estimated_fare"] = (
+            BASE_FARE + (df_filtered["distance_miles"] * COST_PER_MILE * df_filtered["surge_factor"])
         )
-        .properties(height=300)
-    )
-
-    st.altair_chart(gb_chart, use_container_width=True)
-
-    # ----------------------------------------
-    # Estimated Lost Revenue Due to Elasticity
-    # ----------------------------------------
-    st.subheader("Estimated Lost Revenue Due to Surge-Induced Demand Drop")
-
-    # Reuse elasticity_df from Pricing tab — recompute here if needed
-    elasticity_df = (
-        df_filtered.groupby("surge_bin")
-        .size()
-        .reset_index(name="trip_count")
-    )
-
-    # Add midpoints for plotting
-    surge_midpoints = {
-        "0-1": 0.5,
-        "1-1.25": 1.125,
-        "1.25-1.5": 1.375,
-        "1.5-2": 1.75,
-        "2-5": 3.5,
-    }
-    elasticity_df["surge_mid"] = elasticity_df["surge_bin"].map(surge_midpoints)
-
-    # Baseline = total trips in surge ≤ 1.0
-    baseline_trip_volume = elasticity_df.loc[elasticity_df["surge_bin"] == "0-1", "trip_count"].values[0]
-
-    # Compute relative drop
-    elasticity_df["rel_to_baseline_%"] = (
-        (elasticity_df["trip_count"] - baseline_trip_volume) / baseline_trip_volume * 100
-    )
-
-    # Lost trips = missing trips compared to baseline
-    elasticity_df["lost_trips"] = (
-        (baseline_trip_volume - elasticity_df["trip_count"]).clip(lower=0)
-    )
-
-    # Baseline avg fare
-    baseline_avg_fare = gross_bookings_df.loc[gross_bookings_df["surge_bin"] == "0-1", "avg_fare"].values[0]
-
-    # Lost revenue = lost trips × baseline avg fare
-    elasticity_df["lost_revenue"] = elasticity_df["lost_trips"] * baseline_avg_fare
-
-    st.dataframe(elasticity_df[["surge_mid", "trip_count", "lost_trips", "lost_revenue"]])
-
-    # Lost Revenue Line Chart
-    loss_chart = (
-        alt.Chart(elasticity_df)
-        .mark_line(point=True)
-        .encode(
-            x=alt.X("surge_mid:Q", title="Surge Level"),
-            y=alt.Y("lost_revenue:Q", title="Estimated Lost Revenue ($)")
+    
+        st.write(
+            f"""
+            **Fare Formula Used:**  
+            Estimated Fare = ${BASE_FARE} + (Distance in miles × ${COST_PER_MILE} × Surge Factor)
+            """
         )
-        .properties(height=300)
-    )
+    
+        # ----------------------------------------
+        # Gross Bookings vs Surge Bin
+        # ----------------------------------------
+        st.subheader("Estimated Gross Bookings vs Surge Level")
+    
+        surge_bins = [0, 1, 1.25, 1.5, 2, 5]
+        surge_labels = ["0-1", "1-1.25", "1.25-1.5", "1.5-2", "2-5"]
+    
+        df_filtered["surge_bin"] = pd.cut(
+            df_filtered["surge_factor"],
+            bins=surge_bins,
+            labels=surge_labels
+        )
+    
+        gross_bookings_df = (
+            df_filtered.groupby("surge_bin")
+            .agg(
+                total_gross_bookings=("estimated_fare", "sum"),
+                total_trips=("estimated_fare", "count"),
+                avg_fare=("estimated_fare", "mean"),
+            )
+            .reset_index()
+        )
+    
+        st.dataframe(gross_bookings_df)
+    
+        import altair as alt
+    
+        gb_chart = (
+            alt.Chart(gross_bookings_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("surge_bin:N", title="Surge Level"),
+                y=alt.Y("total_gross_bookings:Q", title="Estimated Gross Bookings ($)"),
+                tooltip=["surge_bin", "total_gross_bookings", "total_trips", "avg_fare"],
+            )
+            .properties(height=300)
+        )
+    
+        st.altair_chart(gb_chart, use_container_width=True)
+    
+        # ----------------------------------------
+        # Estimated Lost Revenue Due to Elasticity
+        # ----------------------------------------
+        st.subheader("Estimated Lost Revenue Due to Surge-Induced Demand Drop")
+    
+        elasticity_df = (
+            df_filtered.groupby("surge_bin")
+            .size()
+            .reset_index(name="trip_count")
+        )
+    
+        surge_midpoints = {
+            "0-1": 0.5,
+            "1-1.25": 1.125,
+            "1.25-1.5": 1.375,
+            "1.5-2": 1.75,
+            "2-5": 3.5,
+        }
+        elasticity_df["surge_mid"] = elasticity_df["surge_bin"].map(surge_midpoints)
+    
+        baseline_trip_volume = elasticity_df.loc[
+            elasticity_df["surge_bin"] == "0-1", "trip_count"
+        ].values[0]
+    
+        elasticity_df["rel_to_baseline_%"] = (
+            (elasticity_df["trip_count"] - baseline_trip_volume) / baseline_trip_volume * 100
+        )
+    
+        elasticity_df["lost_trips"] = (
+            (baseline_trip_volume - elasticity_df["trip_count"]).clip(lower=0)
+        )
+    
+        baseline_avg_fare = gross_bookings_df.loc[
+            gross_bookings_df["surge_bin"] == "0-1", "avg_fare"
+        ].values[0]
+    
+        elasticity_df["lost_revenue"] = elasticity_df["lost_trips"] * baseline_avg_fare
+    
+        st.dataframe(
+            elasticity_df[["surge_mid", "trip_count", "lost_trips", "lost_revenue"]]
+        )
+    
+        loss_chart = (
+            alt.Chart(elasticity_df)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("surge_mid:Q", title="Surge Level"),
+                y=alt.Y("lost_revenue:Q", title="Estimated Lost Revenue ($)"),
+            )
+            .properties(height=300)
+        )
+    
+        st.altair_chart(loss_chart, use_container_width=True)
 
-    st.altair_chart(loss_chart, use_container_width=True)
 
 # --------------------------
 # TAB 5: Data Profiling (appendix)
