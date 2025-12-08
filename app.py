@@ -249,29 +249,62 @@ with tab_geo:
 # --------------------------
 with tab_pricing:
     st.subheader("Trips by Surge Factor (Binned)")
-    if "surge_factor" in df_filtered.columns:
-        # Create bins
-        surge_series = df_filtered["surge_factor"].clip(lower=0, upper=5)
-        surge_bins = pd.cut(surge_series, bins=[0, 1, 1.25, 1.5, 2, 5], include_lowest=True)
 
-        # Convert bin intervals to strings for safe plotting
+    if "surge_factor" in df_filtered.columns:
+        # 1) Build surge bins
+        surge_series = df_filtered["surge_factor"].clip(lower=0, upper=5)
+
+        bins = [0, 1, 1.25, 1.5, 2, 5]
+        surge_bins = pd.cut(surge_series, bins=bins, include_lowest=True)
+
+        # 2) Trip volume per bin (demand)
         trips_by_surge_bin = surge_bins.value_counts().sort_index()
         trips_df = trips_by_surge_bin.reset_index()
         trips_df.columns = ["surge_bin", "trip_count"]
         trips_df["surge_bin"] = trips_df["surge_bin"].astype(str)
 
         st.bar_chart(trips_df.set_index("surge_bin"))
-        st.caption("This approximates how ride volume changes across different surge levels.")
+        st.caption("How ride volume distributes across different surge levels.")
+
+        # 3) Elasticity curve: use bin midpoints as x-axis (numeric)
+        #    Compute midpoints of each interval for plotting
+        interval_index = trips_by_surge_bin.index
+        bin_midpoints = [interval.left + (interval.right - interval.left)/2 for interval in interval_index]
+
+        elasticity_df = pd.DataFrame({
+            "surge_mid": bin_midpoints,
+            "trip_count": trips_by_surge_bin.values
+        })
+
+        st.subheader("Elasticity Curve: Trips vs Surge Level")
+        st.line_chart(elasticity_df.set_index("surge_mid"))
+        st.caption(
+            "This curve approximates demand elasticity: how trip volume changes as surge (effective price) increases."
+        )
+
+        # 4) Relative change vs baseline (no/low surge) to talk about lost trips
+        st.subheader("Relative Change vs Baseline (No / Low Surge)")
+        baseline_trips = elasticity_df.loc[elasticity_df["surge_mid"] <= 1.0, "trip_count"].sum()
+
+        elasticity_df["rel_to_baseline_%"] = (
+            (elasticity_df["trip_count"] - baseline_trips) / baseline_trips * 100
+        ).round(1)
+
+        st.write(
+            "Baseline is defined as the total trip volume in bins with surge ≤ 1.0. "
+            "Negative percentages indicate potential lost demand at higher surge levels."
+        )
+        st.dataframe(elasticity_df)
+
     else:
-        st.info("Surge data not available.")
+        st.info("Surge data not available for this slice of the dataset.")
 
     st.subheader("Average Driver Rating by Surge Bin")
     if {"surge_factor", "driver_rating"}.issubset(df_filtered.columns):
-        surge_bins = pd.cut(
-            df_filtered["surge_factor"].clip(lower=0, upper=5),
-            bins=[0, 1, 1.25, 1.5, 2, 5],
-            include_lowest=True,
-        )
+        surge_series = df_filtered["surge_factor"].clip(lower=0, upper=5)
+        bins = [0, 1, 1.25, 1.5, 2, 5]
+        surge_bins = pd.cut(surge_series, bins=bins, include_lowest=True)
+
         rating_by_surge = df_filtered.groupby(surge_bins)["driver_rating"].mean()
         rating_df = rating_by_surge.reset_index()
         rating_df.columns = ["surge_bin", "avg_rating"]
