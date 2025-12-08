@@ -250,10 +250,17 @@ with tab_geo:
 with tab_pricing:
     st.subheader("Trips by Surge Factor (Binned)")
     if "surge_factor" in df_filtered.columns:
+        # Create bins
         surge_series = df_filtered["surge_factor"].clip(lower=0, upper=5)
         surge_bins = pd.cut(surge_series, bins=[0, 1, 1.25, 1.5, 2, 5], include_lowest=True)
+
+        # Convert bin intervals to strings for safe plotting
         trips_by_surge_bin = surge_bins.value_counts().sort_index()
-        st.bar_chart(trips_by_surge_bin)
+        trips_df = trips_by_surge_bin.reset_index()
+        trips_df.columns = ["surge_bin", "trip_count"]
+        trips_df["surge_bin"] = trips_df["surge_bin"].astype(str)
+
+        st.bar_chart(trips_df.set_index("surge_bin"))
         st.caption("This approximates how ride volume changes across different surge levels.")
     else:
         st.info("Surge data not available.")
@@ -266,7 +273,11 @@ with tab_pricing:
             include_lowest=True,
         )
         rating_by_surge = df_filtered.groupby(surge_bins)["driver_rating"].mean()
-        st.bar_chart(rating_by_surge)
+        rating_df = rating_by_surge.reset_index()
+        rating_df.columns = ["surge_bin", "avg_rating"]
+        rating_df["surge_bin"] = rating_df["surge_bin"].astype(str)
+
+        st.bar_chart(rating_df.set_index("surge_bin"))
         st.caption("Helps explore whether higher surge correlates with worse experience.")
     else:
         st.info("Need both surge and rating data to show this chart.")
