@@ -16,21 +16,21 @@ def load_and_clean_data(zip_path: str, n_samples: int = 200_000) -> pd.DataFrame
         with z.open(csv_name) as f:
             df_full = pd.read_csv(f)
 
-    # --- Random Sample ---
+    # --- Sample for performance ---
     df = df_full.sample(n=min(n_samples, len(df_full)), random_state=42).copy()
 
-    # --- Basic cleaning & type conversions (your v0 logic) ---
+    # --- Basic cleaning & type conversions ---
 
     # Datetime parsing
     for col in ["started_on", "completed_on"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
 
-    # Distance sanity filter - exclude 0 distance travels
+    # Distance sanity filter
     if "distance_travelled" in df.columns:
         df = df[df["distance_travelled"] > 0]
 
-    # Ratings: fill missing with median
+    # Ratings: fill missing with median (prototype choice)
     for col in ["driver_rating", "rider_rating"]:
         if col in df.columns and df[col].notna().any():
             median_val = df[col].median()
@@ -44,15 +44,14 @@ def load_and_clean_data(zip_path: str, n_samples: int = 200_000) -> pd.DataFrame
     if "requested_car_category" in df.columns:
         df["requested_car_category"] = df["requested_car_category"].astype(str)
 
-    # Year sanity
+    # Year sanity (for vehicle year)
     if "year" in df.columns:
         df["year"] = pd.to_numeric(df["year"], errors="coerce")
         df = df[(df["year"].isna()) | ((df["year"] >= 1990) & (df["year"] <= 2030))]
 
-    
     # --- Derived features for analysis ---
 
-    # Trip duration in min
+    # Trip duration in minutes
     if {"started_on", "completed_on"}.issubset(df.columns):
         df["trip_duration_min"] = (
             (df["completed_on"] - df["started_on"]).dt.total_seconds() / 60
@@ -70,8 +69,6 @@ def load_and_clean_data(zip_path: str, n_samples: int = 200_000) -> pd.DataFrame
 
     return df
 
-
-
 # --- Load data ---
 df = load_and_clean_data(ZIP_PATH)
 
@@ -80,7 +77,7 @@ df = load_and_clean_data(ZIP_PATH)
 # ==========================
 st.sidebar.header("Filters")
 
-# Date range filter (safe min/max with dropna)
+# Date range filter
 if df["date_only"].notna().any():
     min_date = df["date_only"].dropna().min()
     max_date = df["date_only"].dropna().max()
@@ -140,8 +137,9 @@ if "surge_factor" in df_filtered.columns:
 if "requested_car_category" in df_filtered.columns and ride_category:
     df_filtered = df_filtered[df_filtered["requested_car_category"].isin(ride_category)]
 
-st.write(f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** sampled trips.")
-
+st.write(
+    f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** sampled trips."
+)
 
 # ==========================
 # TABS
