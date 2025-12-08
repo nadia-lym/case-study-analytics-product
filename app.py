@@ -217,6 +217,56 @@ with tab_overview:
     st.subheader("Raw Data Preview (Filtered Sample)")
     st.dataframe(df_filtered.head(100))
 
+    # ---------------------------------------
+    # Demand Heatmap: Trips by Hour x Weekday
+    # ---------------------------------------
+    st.markdown("### Demand Heatmap: Trips by Hour × Weekday")
+
+    # Prepare data
+    heatmap_df = (
+        df_filtered.groupby(["weekday", "hour"])
+        .size()
+        .reset_index(name="trip_count")
+    )
+
+    # Convert weekday number → label
+    weekday_map = {
+        0: "Mon",
+        1: "Tue",
+        2: "Wed",
+        3: "Thu",
+        4: "Fri",
+        5: "Sat",
+        6: "Sun"
+    }
+    heatmap_df["weekday_name"] = heatmap_df["weekday"].map(weekday_map)
+    
+    # Pivot to create matrix
+    heatmap_pivot = heatmap_df.pivot(index="weekday_name", columns="hour", values="trip_count")
+    
+    # Plot heatmap using Altair
+    import altair as alt
+    
+    heatmap_chart = (
+        alt.Chart(heatmap_df)
+        .mark_rect()
+        .encode(
+            x=alt.X("hour:O", title="Hour of Day"),
+            y=alt.Y("weekday_name:O", title="Weekday", sort=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]),
+            color=alt.Color("trip_count:Q", title="Trips", scale=alt.Scale(scheme="blues")),
+            tooltip=[
+                alt.Tooltip("weekday_name:N", title="Weekday"),
+                alt.Tooltip("hour:O", title="Hour"),
+                alt.Tooltip("trip_count:Q", title="Trips")
+            ]
+        )
+        .properties(height=300)
+    )
+    
+    st.altair_chart(heatmap_chart, use_container_width=True)
+
+
+
 # --------------------------
 # TAB 2: Geospatial View
 # --------------------------
