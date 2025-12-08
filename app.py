@@ -144,8 +144,8 @@ st.write(
 # ==========================
 # TABS
 # ==========================
-tab_overview, tab_geo, tab_pricing, tab_profile = st.tabs(
-    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "Revenue Insights", "🧪 Data Profiling"]
+tab_overview, tab_geo, tab_pricing, tab_revenue, tab_profile = st.tabs(
+    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "💰 Revenue Insights", "🧪 Data Profiling"]
 )
 
 # --------------------------
