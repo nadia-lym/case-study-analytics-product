@@ -142,11 +142,13 @@ if "requested_car_category" in df_filtered.columns and ride_category:
 
 st.write(f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** sampled trips.")
 
+
 # ==========================
 # TABS
 # ==========================
 tab_overview, tab_geo, tab_pricing, tab_profile = st.tabs(
-    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "🧪 Data Profiling"])
+    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "🧪 Data Profiling"]
+)
 
 # --------------------------
 # TAB 1: Marketplace Overview
@@ -175,14 +177,15 @@ with tab_overview:
     else:
         col4.metric("Avg Driver Rating", "N/A")
 
-    st.subheader("Trips by Hour of Day")
+    # Trips by Hour (already have)
+    st.subheader("Trips by Hour of Day (Typical Daily Pattern)")
     if "hour" in df_filtered.columns:
         hourly_counts = df_filtered.groupby("hour").size().sort_index()
         st.line_chart(hourly_counts)
     else:
         st.info("Hour information is not available in the dataset.")
 
-        # Trips over Time (by date)
+    # Trips over Time (by date)
     st.subheader("Trips Over Time (by Date)")
     if "date_only" in df_filtered.columns:
         trips_by_date = df_filtered.groupby("date_only").size()
@@ -213,7 +216,6 @@ with tab_overview:
     else:
         st.info("Driver rating not available.")
 
-    
     st.subheader("Raw Data Preview (Filtered Sample)")
     st.dataframe(df_filtered.head(100))
 
@@ -272,7 +274,7 @@ with tab_pricing:
         st.info("Need both surge and rating data to show this chart.")
 
 # --------------------------
-# TAB 4: Data Profiling (your original summaries)
+# TAB 4: Data Profiling (your appendix)
 # --------------------------
 with tab_profile:
     st.subheader("Missing Values by Column")
