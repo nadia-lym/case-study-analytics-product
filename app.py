@@ -6,7 +6,7 @@ st.title("Analytical Products Case Study")
 st.write("Prototype loading a cleaned sample of the Ride Austin dataset from ZIP.")
 
 # Path to the ZIP file stored in your repo
-ZIP_PATH = "archive.zip"  # make sure this matches your actual file name
+ZIP_PATH = "archive.zip"
 
 @st.cache_data
 def load_and_clean_data(zip_path: str, n_samples: int = 200_000) -> pd.DataFrame:
