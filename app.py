@@ -144,8 +144,8 @@ st.write(
 # ==========================
 # TABS
 # ==========================
-tab_overview, tab_geo, tab_pricing, tab_revenue, tab_profile = st.tabs(
-    ["📊 Marketplace Overview", "🗺️ Geospatial View", "💲 Pricing & Elasticity", "💰 Revenue Insights", "🧪 Data Profiling"]
+tab_overview, tab_geo, tab_weather, tab_pricing, tab_revenue, tab_profile = st.tabs(
+    ["📊 Marketplace Overview", "🗺️ Geospatial View", "🌧️ Weather Insights", "💲 Pricing & Elasticity", "💰 Revenue Insights", "🧪 Data Profiling"]
 )
 
 # --------------------------
@@ -547,9 +547,150 @@ with tab_pricing:
     
         st.altair_chart(loss_chart, use_container_width=True)
 
+# --------------------------
+# TAB 5: Weather Insights
+# --------------------------
+
+with tab_weather:
+    st.header("Weather Insights")
+
+    st.write(
+        "Exploring how weather conditions such as rainfall, temperature, fog, and thunderstorms "
+        "influence rider demand and surge (supply tightness). All weather values come from the "
+        "NOAA daily Austin weather dataset merged into RideAustin trips."
+    )
+
+    weather_cols = ["PRCP", "TMAX", "TMIN", "Fog", "HeavyFog", "Thunder"]
+    available_weather = [col for col in weather_cols if col in df_filtered.columns]
+
+    if not available_weather:
+        st.error("No weather columns found in dataset.")
+    else:
+        #Daily aggregates, (since weather is daily
+        df_daily = (
+            df_filtered.groupby("date_only")
+            .agg(
+                trips=("date_only", "count"),
+                avg_surge=("surge_factor", "mean"),
+                prcp=("PRCP", "mean"),
+                tmax=("TMAX", "mean"),
+                tmin=("TMIN", "mean"),
+                fog=("Fog", "max"),
+                heavyfog=("HeavyFog", "max"),
+                thunder=("Thunder", "max")
+            )
+            .reset_index()
+        )
+
+        # Create average temperature column
+        df_daily["avg_temp"] = (df_daily["tmax"] + df_daily["tmin"]) / 2
+
+        # ==========================================================
+        # 1 — Trips vs Rainfall (PRCP)
+        # ==========================================================
+        st.subheader("Trips vs Rainfall (PRCP)")
+
+        prcp_bins = [0, 0.01, 0.1, 0.5, 2]  # inches
+        prcp_labels = ["0", "0–0.01", "0.01–0.1", "0.1–0.5", "0.5+"]
+
+        df_daily["prcp_bin"] = pd.cut(df_daily["prcp"], bins=prcp_bins, labels=prcp_labels, include_lowest=True)
+
+        trips_by_prcp = (
+            df_daily.groupby("prcp_bin")["trips"]
+            .mean()
+            .reset_index()
+        )
+
+        st.bar_chart(trips_by_prcp.set_index("prcp_bin"))
+        st.caption("Daily trip volume tends to shift depending on rainfall intensity.")
+
+        # ==========================================================
+        # 2 — Trips vs Temperature
+        # ==========================================================
+        st.subheader("Trips vs Temperature (Average Daily Temp)")
+
+        temp_bins = [20, 40, 50, 60, 70, 80, 100]
+        temp_labels = ["<40°F", "40–50°F", "50–60°F", "60–70°F", "70–80°F", "80+°F"]
+
+        df_daily["temp_bin"] = pd.cut(df_daily["avg_temp"], bins=temp_bins, labels=temp_labels, include_lowest=True)
+
+        trips_by_temp = (
+            df_daily.groupby("temp_bin")["trips"]
+            .mean()
+            .reset_index()
+        )
+
+        st.bar_chart(trips_by_temp.set_index("temp_bin"))
+        st.caption("Shows whether rider demand increases or drops at different temperatures.")
+
+        # ==========================================================
+        # 3 — Weather Events: Trips + Surge (Fog /HeavyFog / Thunder)
+        # ==========================================================
+        st.subheader("Weather Events: Trip Volume & Avg Surge")
+
+        event_map = {
+            "Fog": "Fog",
+            "HeavyFog": "Heavy Fog",
+            "Thunder": "Thunderstorms"
+        }
+
+        event_stats = []
+
+        for col, label in event_map.items():
+            if col in df_daily.columns:
+                event_stats.append({
+                    "event": label,
+                    "days_with_event": int(df_daily[col].sum()),
+                    "avg_trips": df_daily[df_daily[col] == 1]["trips"].mean(),
+                    "avg_surge": df_daily[df_daily[col] == 1]["avg_surge"].mean(),
+                })
+
+        event_df = pd.DataFrame(event_stats)
+
+        st.dataframe(event_df)
+        st.caption(
+            "Fog and thunderstorms may reduce supply (drivers stay home) or increase demand "
+            "(riders avoid walking), both of which can raise surge."
+        )
+
+        # ==========================================================
+        # 4 — Surge vs Weather (Continuous Relationships)
+        # ==========================================================
+        st.subheader("Surge vs Weather Conditions")
+
+        import altair as alt
+
+        surge_weather_chart = (
+            alt.Chart(df_daily)
+            .mark_point(opacity=0.6)
+            .encode(
+                x=alt.X("prcp:Q", title="Rainfall (inches)"),
+                y=alt.Y("avg_surge:Q", title="Average Daily Surge"),
+                tooltip=["date_only", "prcp", "avg_surge"]
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(surge_weather_chart, use_container_width=True)
+        st.caption("Higher surge is often observed on rainy days when supply tightens.")
+
+        # Temperature vs surge
+        surge_temp_chart = (
+            alt.Chart(df_daily)
+            .mark_point(opacity=0.6, color="orange")
+            .encode(
+                x=alt.X("avg_temp:Q", title="Avg Daily Temperature (°F)"),
+                y=alt.Y("avg_surge:Q", title="Average Daily Surge"),
+                tooltip=["date_only", "avg_temp", "avg_surge"]
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(surge_temp_chart, use_container_width=True)
+        st.caption("Temperature extremes (too cold or too hot) may affect supply availability.")
 
 # --------------------------
-# TAB 5: Data Profiling (appendix)
+# TAB 6: Data Profiling (appendix)
 # --------------------------
 with tab_profile:
     st.subheader("Missing Values by Column")
