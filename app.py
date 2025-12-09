@@ -4,7 +4,7 @@ import zipfile
 
 st.set_page_config(layout="wide")
 st.title("Analytical Products Case Study – Ride Austin Prototype")
-st.write("Interactive prototype exploring a cleaned sample of the Ride Austin dataset.")
+st.write("Dashboard exploring Ride Austin dataset for the period of 2016-2017.")
 
 ZIP_PATH = "archive.zip"
 
