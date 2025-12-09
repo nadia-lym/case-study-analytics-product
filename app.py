@@ -640,14 +640,14 @@ with tab_weather:
         event_map = {"fog": "Fog", "heavyfog": "Heavy Fog", "thunder": "Thunderstorms"}
         
         for col, label in event_map.items():
-            if col in df_daily_weather.columns:
-                days = int(df_daily_weather[col].sum())
+            if col in df_daily.columns:
+                days = int(df_daily[col].sum())
                 if days > 0:
                     event_stats.append({
                         "event": label,
                         "days_with_event": days,
-                        "avg_trips": df_daily_weather[df_daily_weather[col] == 1]["trips"].mean(),
-                        "avg_surge": df_daily_weather[df_daily_weather[col] == 1]["avg_surge"].mean(),
+                        "avg_trips": df_daily[df_daily[col] == 1]["trips"].mean(),
+                        "avg_surge": df_daily[df_daily[col] == 1]["avg_surge"].mean(),
                     })
         
         # Convert to dataframe
