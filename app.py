@@ -582,6 +582,7 @@ with tab_weather:
             .reset_index()
         )
 
+
         # Create average temperature column
         df_daily["avg_temp"] = (df_daily["tmax"] + df_daily["tmin"]) / 2
 
@@ -634,20 +635,28 @@ with tab_weather:
             "Thunder": "Thunderstorms"
         }
 
+        # Build event stats table
         event_stats = []
-
+        event_map = {"fog": "Fog", "heavyfog": "Heavy Fog", "thunder": "Thunderstorms"}
+        
         for col, label in event_map.items():
-            if col in df_daily.columns:
-                event_stats.append({
-                    "event": label,
-                    "days_with_event": int(df_daily[col].sum()),
-                    "avg_trips": df_daily[df_daily[col] == 1]["trips"].mean(),
-                    "avg_surge": df_daily[df_daily[col] == 1]["avg_surge"].mean(),
-                })
-
+            if col in df_daily_weather.columns:
+                days = int(df_daily_weather[col].sum())
+                if days > 0:
+                    event_stats.append({
+                        "event": label,
+                        "days_with_event": days,
+                        "avg_trips": df_daily_weather[df_daily_weather[col] == 1]["trips"].mean(),
+                        "avg_surge": df_daily_weather[df_daily_weather[col] == 1]["avg_surge"].mean(),
+                    })
+        
+        # Convert to dataframe
         event_df = pd.DataFrame(event_stats)
-
-        st.dataframe(event_df)
+        
+        if event_df.empty:
+            st.info("No weather events (Fog / Heavy Fog / Thunder) present in selected date range.")
+        else:
+            st.dataframe(event_df)
         st.caption(
             "Fog and thunderstorms may reduce supply (drivers stay home) or increase demand "
             "(riders avoid walking), both of which can raise surge."
