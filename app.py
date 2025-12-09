@@ -276,27 +276,61 @@ with tab_overview:
 # --------------------------
 # TAB 2: Geospatial View
 # --------------------------
+# --------------------------
+# TAB 2: Geospatial View
+# --------------------------
 with tab_geo:
-    st.subheader("Pickup Density Map (Interactive)")
+    st.header("Pickup Density Map")
 
+    st.caption(
+        "**Note:** Location coordinates in the Ride Austin dataset are "
+        "obfuscated (lat/long rounded to whole degrees), so this map does *not* "
+        "represent true pickup density. It is included only as a visual placeholder."
+    )
+
+    # Interactive map (even though coordinates are obfuscated)
     if {"start_location_lat", "start_location_long"}.issubset(df_filtered.columns):
-        geo = df_filtered[["start_location_lat", "start_location_long"]].dropna()
-
-        # Sample to keep the map performant
-        geo_sample = geo.sample(n=min(5000, len(geo)), random_state=42)
-        geo_sample = geo_sample.rename(
-            columns={"start_location_lat": "lat", "start_location_long": "lon"}
+        geo_map = (
+            df_filtered[["start_location_lat", "start_location_long"]]
+            .dropna()
+            .rename(columns={
+                "start_location_lat": "lat",
+                "start_location_long": "lon"
+            })
         )
 
-        st.map(geo_sample)
+        # Sample only to keep map fast & tidy
+        st.map(geo_map.sample(n=min(4000, len(geo_map)), random_state=42))
 
-        st.caption("Interactive map: zoom in to inspect pickup hotspots across Austin.")
     else:
-        st.info("Start location coordinates not available.")
+        st.info("Start location coordinates not available in this dataset.")
 
-    # ---------------------------
-    # Surge by Zip Code (restored)
-    # ---------------------------
+    st.markdown("---")
+
+    # ----------------------------------------------------
+    # 1) Trips per Zip Code
+    # ----------------------------------------------------
+    st.subheader("Trip Volume by Start Zip Code")
+
+    if "start_zip_code" in df_filtered.columns:
+        trips_by_zip = (
+            df_filtered.dropna(subset=["start_zip_code"])
+            .groupby("start_zip_code")
+            .size()
+            .sort_values(ascending=False)
+            .head(20)
+        )
+
+        st.bar_chart(trips_by_zip)
+        st.caption("Top 20 zip codes ranked by total trip volume.")
+    else:
+        st.info("Zip code information not available.")
+
+    st.markdown("---")
+
+    # ----------------------------------------------------
+    # 2) Average Surge by Zip Code (true supply tightness)
+    # ----------------------------------------------------
     st.subheader("Average Surge by Start Zip Code")
 
     if {"start_zip_code", "surge_factor"}.issubset(df_filtered.columns):
@@ -309,9 +343,10 @@ with tab_geo:
         )
 
         st.bar_chart(surge_by_zip)
-        st.caption("Zip codes with the highest average surge indicate tight supply or peak demand pockets.")
+        st.caption("Zip codes with highest average surge — indicating tight supply or high demand.")
     else:
-        st.info("Zip code / surge data not available.")
+        st.info("Cannot compute surge by zip code due to missing fields.")
+
 
 
 # --------------------------
