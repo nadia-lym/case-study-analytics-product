@@ -657,6 +657,7 @@ with tab_weather:
             st.info("No weather events (Fog / Heavy Fog / Thunder) present in selected date range.")
         else:
             st.dataframe(event_df)
+        
         st.caption(
             "Fog and thunderstorms may reduce supply (drivers stay home) or increase demand "
             "(riders avoid walking), both of which can raise surge."
