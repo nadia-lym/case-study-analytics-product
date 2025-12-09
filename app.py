@@ -9,22 +9,25 @@ st.write("Interactive prototype exploring a cleaned sample of the Ride Austin da
 ZIP_PATH = "archive.zip"
 
 @st.cache_data
-def load_and_clean_data(zip_path: str, n_samples: int = 200_000) -> pd.DataFrame:
+def load_and_clean_data(zip_path: str) -> pd.DataFrame:
     # --- Load from ZIP ---
     with zipfile.ZipFile(zip_path, "r") as z:
-        csv_name = z.namelist()[0]  # assumes first file is the main CSV
+        csv_name = z.namelist()[0]
         with z.open(csv_name) as f:
-            df_full = pd.read_csv(f)
+            df = pd.read_csv(f)
 
-    # --- Sample for performance ---
-    df = df_full.sample(n=min(n_samples, len(df_full)), random_state=42).copy()
-
-    # --- Basic cleaning & type conversions ---
-
-    # Datetime parsing
+    # --- Datetime parsing ---
     for col in ["started_on", "completed_on"]:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
+
+    # --- Trim to the true RideAustin date range ---
+    df = df[
+        (df["started_on"] >= "2016-07-21") &
+        (df["started_on"] <= "2017-02-07")
+    ].copy()
+
+    # --- Basic cleaning & type conversions ---
 
     # Distance sanity filter
     if "distance_travelled" in df.columns:
