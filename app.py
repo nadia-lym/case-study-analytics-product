@@ -23,7 +23,7 @@ def load_and_clean_data(zip_path: str) -> pd.DataFrame:
 
     # --- Trim to the true RideAustin date range ---
     df = df[
-        (df["started_on"] >= "2016-06-05") &
+        (df["started_on"] >= "2016-07-21") &
         (df["started_on"] <= "2017-02-07")
     ].copy()
 
