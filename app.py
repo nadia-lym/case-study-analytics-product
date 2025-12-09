@@ -270,29 +270,53 @@ with tab_overview:
 # --------------------------
 # TAB 2: Geospatial View
 # --------------------------
+# --------------------------
+# TAB 2: Geospatial View
+# --------------------------
 with tab_geo:
-    st.subheader("Pickup Hotspots (Sampled Map)")
+    st.subheader("Pickup Density Hexmap (Aggregated Hotspots)")
+
     if {"start_location_lat", "start_location_long"}.issubset(df_filtered.columns):
-        geo = df_filtered[["start_location_lat", "start_location_long"]].dropna().rename(
-            columns={"start_location_lat": "lat", "start_location_long": "lon"}
+
+        # Take a sample for performance
+        geo = df_filtered[["start_location_lat", "start_location_long"]].dropna()
+        geo = geo.sample(n=min(20000, len(geo)), random_state=42)  # 20k points is plenty
+
+        # 1. Create hexbin-like grid by binning lat/long
+        lat_bin_size = 0.01   # approx ~1 km
+        lon_bin_size = 0.01
+
+        geo["lat_bin"] = (geo["start_location_lat"] / lat_bin_size).round() * lat_bin_size
+        geo["lon_bin"] = (geo["start_location_long"] / lon_bin_size).round() * lon_bin_size
+
+        hex_df = (
+            geo.groupby(["lat_bin", "lon_bin"])
+            .size()
+            .reset_index(name="trip_count")
         )
-        # sample to keep map performant
-        st.map(geo.sample(n=min(5000, len(geo)), random_state=42))
+
+        import altair as alt
+
+        hex_chart = (
+            alt.Chart(hex_df)
+            .mark_circle(size=200)  # circle approximates hex visually
+            .encode(
+                latitude="lat_bin:Q",
+                longitude="lon_bin:Q",
+                color=alt.Color("trip_count:Q", scale=alt.Scale(scheme="reds")),
+                tooltip=[
+                    alt.Tooltip("trip_count:Q", title="Trips in Cell"),
+                    alt.Tooltip("lat_bin:Q", title="Latitude Bin"),
+                    alt.Tooltip("lon_bin:Q", title="Longitude Bin"),
+                ],
+            )
+            .properties(height=600)
+        )
+
+        st.altair_chart(hex_chart, use_container_width=True)
+
     else:
         st.info("Start location coordinates not available.")
-
-    st.subheader("Average Surge by Start Zip Code")
-    if {"start_zip_code", "surge_factor"}.issubset(df_filtered.columns):
-        surge_by_zip = (
-            df_filtered.dropna(subset=["start_zip_code"])
-            .groupby("start_zip_code")["surge_factor"]
-            .mean()
-            .sort_values(ascending=False)
-            .head(20)
-        )
-        st.bar_chart(surge_by_zip)
-    else:
-        st.info("Zip code / surge data not available.")
 
 # --------------------------
 # TAB 3: Pricing & Elasticity
