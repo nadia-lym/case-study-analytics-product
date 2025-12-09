@@ -590,7 +590,7 @@ with tab_weather:
         # ==========================================================
         st.subheader("Trips vs Rainfall (PRCP)")
 
-        prcp_bins = [0, 0.01, 0.1, 0.5, 2]  # inches
+        prcp_bins = [0, 0.01, 0.1, 0.5, 2, 10]  
         prcp_labels = ["0", "0–0.01", "0.01–0.1", "0.1–0.5", "0.5+"]
 
         df_daily["prcp_bin"] = pd.cut(df_daily["prcp"], bins=prcp_bins, labels=prcp_labels, include_lowest=True)
