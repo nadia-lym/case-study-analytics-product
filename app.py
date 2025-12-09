@@ -141,7 +141,7 @@ if "requested_car_category" in df_filtered.columns and ride_category:
     df_filtered = df_filtered[df_filtered["requested_car_category"].isin(ride_category)]
 
 st.write(
-    f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** sampled trips."
+    f"Filtered down to **{len(df_filtered):,} trips** from **{len(df):,}** total trips."
 )
 
 # ==========================
