@@ -3,7 +3,7 @@ import pandas as pd
 import zipfile
 
 st.set_page_config(layout="wide")
-st.title("Analytical Products Case Study – Ride Austin Prototype")
+st.title("Analytics Case Study – Ride Austin Prototype")
 st.write("Dashboard exploring Ride Austin dataset for the period of 2016-2017.")
 
 ZIP_PATH = "archive.zip"
@@ -33,7 +33,7 @@ def load_and_clean_data(zip_path: str) -> pd.DataFrame:
     if "distance_travelled" in df.columns:
         df = df[df["distance_travelled"] > 0]
 
-    # Ratings: fill missing with median (prototype choice)
+    # Ratings: fill out missing with median (prototype choice)
     for col in ["driver_rating", "rider_rating"]:
         if col in df.columns and df[col].notna().any():
             median_val = df[col].median()
